@@ -188,7 +188,11 @@ func (ui *IpodUI) tickOverlays(now time.Time) bool {
 	}
 	if !briOSD.until.IsZero() && now.After(briOSD.until) {
 		briOSD.until = time.Time{}
+		briOSD.a.To(0, 300*time.Millisecond, easeCSS, 0) // (it slides out, as the volume)
 		ui.dirty = true
+	}
+	if briOSD.a.Running() || briOSD.a.Target() == 1 {
+		vis = true
 	}
 	if volOSD.a.Target() == 1 && now.After(volOSD.until) {
 		volOSD.a.To(0, 300*time.Millisecond, easeCSS, 0)
@@ -214,6 +218,7 @@ func (ui *IpodUI) showVolumeOSD() {
 		volOSD.a.To(1, 220*time.Millisecond, easeCSS, 0)
 	}
 	volOSD.until = now.Add(1500 * time.Millisecond)
+	briOSD.until = now // one at a time in the header
 	ui.dirty = true
 }
 
@@ -466,10 +471,24 @@ func (ui *IpodUI) hookClick() {
 
 // ---- the brightness, with L2 / R2 anywhere ----
 
-// briOSD: the brightness shows in the header (as Hold's) until until.
-var briOSD struct {
+// briOSD: the brightness shows in the header until until, sliding in and
+// out as the volume does (a).
+var briOSD = struct {
 	until time.Time
 	level int
+	a     *Anim
+}{a: newAnim(0)}
+
+// showBrightnessOSD: the brightness (level, %) in the header for 1.5 s.
+func (ui *IpodUI) showBrightnessOSD(level int) {
+	now := animNow()
+	volOSD.until = now // one at a time in the header
+	briOSD.level = level
+	briOSD.until = now.Add(1500 * time.Millisecond)
+	if briOSD.a.Target() != 1 {
+		briOSD.a.To(1, 220*time.Millisecond, easeCSS, 0)
+	}
+	ui.dirty = true
 }
 
 // stepBrightness: L2 (down) / R2 (up), in steps of 5% (1% at the bottom),
@@ -489,9 +508,7 @@ func (ui *IpodUI) stepBrightness(up bool) {
 	}
 	cur = briStep(cur, up)
 	setBacklightPercent(cur)
-	briOSD.level = cur
-	briOSD.until = animNow().Add(1500 * time.Millisecond)
-	ui.dirty = true
+	ui.showBrightnessOSD(cur)
 }
 
 // briStep: the brightness a step up or down: 5%, 1% at the bottom of the

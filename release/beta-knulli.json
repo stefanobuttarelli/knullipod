@@ -1,8 +1,8 @@
 {
-  "version": "1.0-beta.3",
-  "path": "release/betterpod-v1.0-beta.3-knulli.zip",
-  "url": "https://raw.githubusercontent.com/stefanobuttarelli/betterPod/main/release/betterpod-v1.0-beta.3-knulli.zip",
-  "sha256": "e216670109d19237008a295b68df93ca7a47a2fbaf339cd4df3cc4b03851c0da",
-  "size": 16293033,
-  "notes": "- YouTube Listen starts at once: long videos come in parts (Knulli).\n- Genius in the Music menu, under Cover Flow.\n- The header shows Internet Archive, Podcasts or Suno, with the item's name in the bar under it."
+  "version": "1.0-beta.4",
+  "path": "release/betterpod-v1.0-beta.4-knulli.zip",
+  "url": "https://raw.githubusercontent.com/stefanobuttarelli/betterPod/main/release/betterpod-v1.0-beta.4-knulli.zip",
+  "sha256": "f355aca97f5a138872f19dd92d6a4b9ad9dd0037d26b148acb4daa2f59dad6eb",
+  "size": 16292785,
+  "notes": "- The brightness slides into the header as the volume does."
 }

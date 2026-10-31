@@ -418,11 +418,7 @@ func (ui *IpodUI) onionStepBrightness(up bool) {
 	}
 	setBacklightPercent(onionLevelRaw(lvl))
 	logMsg(fmt.Sprintf("Brightness level %d (%d%%)", lvl, onionLevelRaw(lvl)))
-	now := animNow()
-	volOSD.until = now      // one at a time in the header
-	briOSD.level = lvl * 10 // (the bar in even steps)
-	briOSD.until = now.Add(1500 * time.Millisecond)
-	ui.dirty = true
+	ui.showBrightnessOSD(lvl * 10) // (the bar in even steps)
 }
 
 var osdBoxGrad = []GradStop{{0, Col{30, 30, 30, 0.82}}, {1, Col{0, 0, 0, 0.82}}}

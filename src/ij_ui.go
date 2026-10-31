@@ -1290,22 +1290,27 @@ func (ui *IpodUI) drawHeader(dst *image.RGBA, x, w int, now time.Time) {
 		drawText(sub, f, clock, cx*DPR, (1.5+asc)*DPR, th.headerText)
 	}
 	if hold.on && now.Before(hold.levelShown) {
-		ui.drawHeaderBrightness(sub, tx, maxW, hold.cur) // Hold's brightness, while it changes
+		ui.drawHeaderBrightness(sub, tx, maxW, hold.cur, 0) // Hold's brightness, while it changes
 		return
 	}
-	if now.Before(briOSD.until) {
-		ui.drawHeaderBrightness(sub, tx, maxW, briOSD.level) // L2 / R2
+	if ba := briOSD.a.Get(now); ba > 0.001 {
+		// L2 / R2: the title slides up and the brightness comes in from
+		// below, as the volume and a new song do
+		up := -20 * easeInOut(ba)
+		drawText(sub, f, ellipsize(f, ui.headerTitle, maxW*DPR), tx*DPR, (1.5+asc+up)*DPR, th.headerText)
+		ui.drawHeaderBrightness(sub, tx, maxW, briOSD.level, 20+up)
 		return
 	}
 	ui.drawHeaderTitle(sub, ui.headerTitle, tx, maxW, ui.hdrActive, now)
 }
 
 // drawHeaderBrightness: a sun and a bar in the title's room (like the
-// volume, drawHeaderVolume), for Hold's brightness.
-func (ui *IpodUI) drawHeaderBrightness(sub *image.RGBA, tx, maxW float64, level int) {
+// volume, drawHeaderVolume), for Hold's brightness and L2 / R2; off: how
+// far it is moved down (CSS px), as it slides in or out.
+func (ui *IpodUI) drawHeaderBrightness(sub *image.RGBA, tx, maxW float64, level int, off float64) {
 	c := th.headerText
 	// (fillCircle is in CSS px)
-	sx, sy := tx+7, 10.0
+	sx, sy := tx+7, 10.0+off
 	fillCircle(sub, sx, sy, 2.6, c)
 	for i := 0; i < 8; i++ {
 		a := float64(i) * math.Pi / 4
@@ -1316,7 +1321,7 @@ func (ui *IpodUI) drawHeaderBrightness(sub *image.RGBA, tx, maxW float64, level 
 	if bw < 30 {
 		return
 	}
-	y := 7.5
+	y := 7.5 + off
 	fillRoundedGradient(sub, bx*DPR, y*DPR, (bx+bw)*DPR, (y+5)*DPR, 2.5*DPR,
 		[]GradStop{{0, Col{0, 0, 0, 0.22}}, {1, Col{0, 0, 0, 0.12}}}, 1)
 	fw := math.Max(bw*float64(level)/100, 5)

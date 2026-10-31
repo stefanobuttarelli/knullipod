@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.0-beta.4 (2026-10-31)
+
+### Changed
+- **The brightness slides into the header** when L2 / R2 (or MENU + the volume keys on the Miyoo) change it: the title goes up and the sun and its bar come in from below, then go back, as the volume and a new song do. It used to appear and go at once. The volume and the brightness take turns: the newer one replaces the other.
+
 ## v1.0-beta.3 (2026-10-31)
 
 ### Added
