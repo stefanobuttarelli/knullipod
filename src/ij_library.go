@@ -43,6 +43,8 @@ func (ui *IpodUI) musicView() *View {
 	v.Build = func() []Item {
 		items := []Item{
 			{Label: "Cover Flow", Preview: PrevMusic, OnSelect: ui.openCoverFlow},
+			// (also with music playing: a new Genius list replaces it)
+			{Label: "Genius", Preview: PrevMusic, OnSelect: ui.playGenius},
 			{Label: "Playlists", Preview: PrevMusic, OnSelect: func() { ui.showView(ui.playlistsView(), "") }},
 			{Label: "Artists", Preview: PrevMusic, OnSelect: func() { ui.showView(ui.artistsView(), "") }},
 			{Label: "Albums", Preview: PrevMusic, OnSelect: func() { ui.showView(ui.albumsView(nil), "") }},

@@ -27,6 +27,9 @@
   <img src="docs/images/hero.png" alt="betterPod: main menu, Cover Flow and Now Playing" width="100%">
 </p>
 
+> [!WARNING]
+> **The Miyoo version is still a beta.** Everything for the Miyoo Mini family (Onion OS) is newer and less tried than the Anbernic (Knulli) version: expect rough edges, and keep a copy of your music and of `App/betterpod/conf`. Problems and logs (`App/betterpod/miyoopod.log`) are welcome in the [issues](https://github.com/stefanobuttarelli/betterPod/issues).
+
 ---
 
 ## Supported systems
@@ -34,7 +37,7 @@
 | System | Consoles | Inside | Where it starts |
 |---|---|---|---|
 | [Knulli](https://knulli.org) | Anbernic handhelds with the Allwinner H700 | 4 × Cortex-A53, 1 GB, aarch64 | Ports |
-| [Onion OS](https://onionui.github.io) | Miyoo Mini, Mini Plus, Mini v4, Mini Flip | 2 × Cortex-A7, 128 MB, armv7 | Apps |
+| [Onion OS](https://onionui.github.io) (**beta**) | Miyoo Mini, Mini Plus, Mini v4, Mini Flip | 2 × Cortex-A7, 128 MB, armv7 | Apps |
 
 The interface is the same on both. What differs is listed in [Features by system](#features-by-system).
 
@@ -72,7 +75,7 @@ The interface is the same on both. What differs is listed in [Features by system
 - **Missing covers found online.** Settings → Library → Missing Covers lists the albums without one: choose one to see what MusicBrainz, iTunes, Deezer and Wikipedia find (with thumbnails and the source) and pick, or search by hand; Search All Automatically fetches them from the Cover Art Archive (MusicBrainz), or else from iTunes, Deezer or Wikipedia, with the same checks. For a soundtrack ripped from a game, which has no album cover of its own, Wikipedia gives the game's box.
 - **Internet Archive.** Search archive.org, see each item's license, listen to it, and download albums (FLAC, ALAC, WAV, AIFF or MP3) straight into your library.
 - **Suno.** Type a Suno profile's name, or a song's code from its share link, to listen to the songs and download them (MP3, with their covers and tags).
-- **Genius,** in the main menu when nothing is playing: 50 songs of your library at random start at once. (Random, despite the name.)
+- **Genius,** in the main menu when nothing is playing, and in Music under Cover Flow: 50 songs of your library at random start at once, replacing what plays. (Random, despite the name.)
 - **End of the Queue.** When the last song in the queue ends, or you press NEXT on it, a card says so and offers Genius, Go to Music or Not Now (B). After NEXT, the last song plays on under the card.
 - **Album Info.** Hold A (or press Y) on an album, in the lists or in Cover Flow, and choose Edit Album Info; Settings → Library → **Missing Info** lists the albums without an artist or track numbers. **Find Info Online** asks MusicBrainz, iTunes, Deezer and Wikipedia; choosing a result fills in album, album artist, year and genre and pairs its songs with yours (titles, artists, numbers). For a game rip, Wikipedia gives the composer or the game's developer. Every field can also be typed. **Save Changes** writes the tags into the MP3, FLAC and Ogg Vorbis files and scans the library again. **Cover** searches for another cover for any album (the one you choose stays, through rescans). **Add to Another Album** (on the album, or on one song in Songs) merges it into an album the library sees as another one (another folder, another spelling, a bonus disc tagged apart): the files stay as they are, any format, and the database remembers where the songs belong; when their numbers are taken they come after it as the next disc. **Separate Added Songs** sends them back.
 - **Podcasts,** in the main menu under Music, as on the iPod. Search Apple's podcast directory, see a podcast's newest episodes and download them into `<music>/Podcasts/<podcast>/`, tagged, with the podcast's artwork, so each podcast is an album. A downloaded episode plays when chosen; Y on an episode or a podcast deletes what was downloaded (asking first). The podcasts you download from stay listed under the search field. Only the files betterPod downloaded count as downloaded and get deleted. The search goes to Apple; feeds and episodes come from each podcast's own servers, which see the console's IP address, like any podcast app.
@@ -157,6 +160,8 @@ betterPod was called KnulliPod. An installation of KnulliPod gets betterPod thro
 Installing by hand over KnulliPod instead: copy `betterPod.sh` and `betterpod` as above, move `knullipod/conf` to `betterpod/conf` (your library and settings), then delete `KnulliPod.sh` and the `knullipod` folder.
 
 ### Onion OS (Miyoo)
+
+The Miyoo version is still a beta (see the note at the top).
 
 1. Download the newest `betterpod-v…-onion.zip` from the [release folder](https://github.com/stefanobuttarelli/betterPod/tree/main/release) and unzip it **at the root of the SD card**. It holds `App/betterpod`, which ends up next to Onion's other apps.
 2. Put your music in `Media/Music` on the card. `Artist/Album/` folders with tagged files work best.
@@ -357,6 +362,7 @@ tools/onion/release.sh "What's new"   # release/betterpod-v<version>-onion.zip a
 | `src/ij_genius.go` | Genius: 50 songs at random, from the main menu |
 | `src/ij_playlists.go` | Playlists: New Playlist, Add to Playlist, removing and deleting; M3U files in `<music>/Playlists` |
 | `src/ij_listen.go` | Listen, on an Internet Archive item, a YouTube video and Suno's songs: a song plays on its row (play, pause), fetched into a temporary folder; the user's music is set aside and comes back |
+| `src/ij_ytstream.go` | Listen to a YouTube video in parts (HTTP ranges over its fragmented audio, each part made a plain M4A) |
 | `src/ij_podcasts.go` | Podcasts (Apple's directory, RSS feeds, episodes) |
 | `src/tagwrite.go` | Writes tags into MP3 (ID3v2), FLAC and Ogg Vorbis files (podcast episodes, Album Info) |
 | `src/ij_albuminfo.go` | Album Info and Missing Info: an album's tags, filled in online or by hand |

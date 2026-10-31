@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.0-beta.3 (2026-10-31)
+
+### Added
+- **YouTube's Listen plays a long video at once.** The audio comes in parts (the first one of 20 seconds, then 3 minutes each, one ahead of the one playing) instead of being fetched whole first: a 2-hour mix starts after a few seconds, and only a few minutes of it are kept on the card at a time. The time shown is the whole video's. When a video can't be heard in parts, it is fetched whole as before. On Knulli (YouTube is off on the Miyoo).
+- **Genius in the Music menu,** under Cover Flow: it starts a new list of 50 songs at random, also when something is playing (it replaces it).
+
+### Changed
+- **The header says where you are, never a result's name:** Internet Archive's items, a podcast's episodes and Suno's songs keep "Internet Archive", "Podcasts" and "Suno" at the top, and show the item's, podcast's or profile's name in the section bar above the list ("Profile: …", "Playlist: …").
+- The README says the Miyoo version is still a beta.
+
 ## v1.0-beta.2 (2026-10-31)
 
 ### Fixed

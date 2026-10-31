@@ -33,6 +33,19 @@ type listenSong struct {
 	Duration float64
 	Ext      string                                                                       // ".mp3", ".m4a"…
 	fetch    func(ctx context.Context, dst string, progress func(got, total int64)) error // into dst
+	// stream: a YouTube video heard in parts (ij_ytstream.go); when it
+	// can't be, fetch gets it whole
+	stream func(ctx context.Context) (*ytStream, error)
+}
+
+// streamState: a streamed song's parts: the one playing, those fetched
+// (one ahead of it; those played are deleted).
+type streamState struct {
+	s      *ytStream
+	part   int
+	have   []bool
+	failed []string
+	files  []string
 }
 
 type preview struct {
@@ -47,8 +60,9 @@ type preview struct {
 	failed  []string        // why a song couldn't come ("" when it came)
 	got     []int64         // bytes so far, by song
 	total   []int64
-	cur     int  // the song asked for
-	loaded  bool // it is in the mixer
+	streams []*streamState // by song: the streamed ones' parts (nil: fetched whole)
+	cur     int            // the song asked for
+	loaded  bool           // it is in the mixer
 	paused  bool
 	waiting bool // for its file
 	err     string
@@ -99,6 +113,11 @@ func previewState(key string) previewInfo {
 	}
 	st := audioGetState()
 	in.pos, in.dur = st.Position, st.Duration
+	if ss := p.streams[p.cur]; ss != nil {
+		// a part of a streamed video: where it is in the whole
+		in.pos += ss.s.parts[ss.part].start
+		in.dur = ss.s.dur
+	}
 	if in.dur <= 0 {
 		in.dur = p.songs[p.cur].Duration
 	}
@@ -171,7 +190,8 @@ func (ui *IpodUI) previewStart(key string, songs []listenSong, first int, refres
 	os.MkdirAll(listenDir(), 0o755)
 	ctx, cancel := context.WithCancel(context.Background())
 	p := &preview{key: key, songs: songs, cancel: cancel, cur: first, kick: make(chan struct{}, 1),
-		got: make([]int64, len(songs)), total: make([]int64, len(songs)), failed: make([]string, len(songs))}
+		got: make([]int64, len(songs)), total: make([]int64, len(songs)), failed: make([]string, len(songs)),
+		streams: make([]*streamState, len(songs))}
 	for i, s := range songs {
 		p.files = append(p.files, filepath.Join(listenDir(), fmt.Sprintf("%02d%s", i+1, s.Ext)))
 		p.ready = append(p.ready, make(chan struct{}))
@@ -221,7 +241,34 @@ func (ui *IpodUI) previewStart(key string, songs []listenSong, first int, refres
 				p.mu.Unlock()
 			}
 			var err error
-			for try := 0; try < 3; try++ {
+			streamed := false
+			if songs[i].stream != nil {
+				// in parts: the first one, then the rest as it plays
+				if st, serr := songs[i].stream(ctx); serr == nil {
+					ss := &streamState{s: st, have: make([]bool, len(st.parts)), failed: make([]string, len(st.parts))}
+					for k := range st.parts {
+						ss.files = append(ss.files, filepath.Join(listenDir(), fmt.Sprintf("%02d-%03d.m4a", i+1, k)))
+					}
+					for try := 0; try < 3; try++ {
+						if err = st.fetchPart(ctx, 0, ss.files[0], songs[i].Title, prog); err == nil || ctx.Err() != nil {
+							break
+						}
+						time.Sleep(2 * time.Second)
+					}
+					if err == nil {
+						streamed = true
+						p.mu.Lock()
+						ss.have[0] = true
+						p.streams[i] = ss
+						p.mu.Unlock()
+						logMsg(fmt.Sprintf("Listen: %q in %d parts", songs[i].Title, len(st.parts)))
+						go p.streamParts(ctx, i, songs[i].Title, prog)
+					}
+				} else if ctx.Err() == nil {
+					logMsg(fmt.Sprintf("Listen: %q fetched whole (%v)", songs[i].Title, serr))
+				}
+			}
+			for try := 0; !streamed && try < 3; try++ {
 				if err = songs[i].fetch(ctx, dst+".part", prog); err == nil || ctx.Err() != nil {
 					break
 				}
@@ -230,7 +277,7 @@ func (ui *IpodUI) previewStart(key string, songs []listenSong, first int, refres
 			if ctx.Err() != nil {
 				return
 			}
-			if err == nil {
+			if err == nil && !streamed {
 				err = os.Rename(dst+".part", dst)
 			}
 			p.mu.Lock()
@@ -257,6 +304,14 @@ func (ui *IpodUI) previewStart(key string, songs []listenSong, first int, refres
 			loaded, paused, cur := p.loaded, p.paused, p.cur
 			p.mu.Unlock()
 			if loaded && !paused && audioCheckFinished() {
+				p.mu.Lock()
+				ss := p.streams[cur]
+				morePart := ss != nil && ss.part+1 < len(ss.s.parts)
+				p.mu.Unlock()
+				if morePart {
+					ui.postSure(func() { ui.previewNextPart(p, cur, refresh) })
+					continue
+				}
 				if cur+1 < len(songs) {
 					ui.postSure(func() { ui.previewPlay(p, cur+1, refresh) })
 				} else {
@@ -293,6 +348,20 @@ func (ui *IpodUI) previewPlay(p *preview, i int, refresh func()) {
 			return // another song (or none) was asked for meanwhile
 		}
 		why := p.failed[i]
+		if ss := p.streams[i]; ss != nil && why == "" {
+			// streamed: from its first part (fetched again if it was
+			// deleted after it played)
+			ss.part = 0
+			p.mu.Unlock()
+			if why = p.waitPart(i, 0); why == "" {
+				file = ss.files[0]
+			}
+			p.mu.Lock()
+			if p.cur != i {
+				p.mu.Unlock()
+				return
+			}
+		}
 		p.mu.Unlock()
 		err := error(nil)
 		if why == "" {
@@ -311,6 +380,125 @@ func (ui *IpodUI) previewPlay(p *preview, i int, refresh func()) {
 		p.mu.Unlock()
 		ui.post(refresh)
 	}()
+}
+
+// previewNextPart: the next part of the streamed song i plays (once it is
+// there; it is usually fetched already), and those before it are deleted.
+func (ui *IpodUI) previewNextPart(p *preview, i int, refresh func()) {
+	p.mu.Lock()
+	ss := p.streams[i]
+	if ss == nil || p.cur != i || ss.part+1 >= len(ss.s.parts) {
+		p.mu.Unlock()
+		return
+	}
+	ss.part++
+	k := ss.part
+	p.loaded = false
+	p.mu.Unlock()
+	select {
+	case p.kick <- struct{}{}:
+	default:
+	}
+	refresh()
+	go func() {
+		why := p.waitPart(i, k)
+		p.mu.Lock()
+		if p.cur != i || ss.part != k {
+			p.mu.Unlock()
+			return
+		}
+		p.mu.Unlock()
+		err := error(nil)
+		if why == "" {
+			err = ui.app.mpvLoadFile(ss.files[k])
+		}
+		p.mu.Lock()
+		switch {
+		case why != "":
+			p.err = why
+		case err != nil:
+			p.err = "Can't play it"
+			logMsg("Listen: " + err.Error())
+		default:
+			p.loaded = true
+			for j := 0; j < k; j++ { // (the parts played)
+				if ss.have[j] {
+					os.Remove(ss.files[j])
+					ss.have[j] = false
+				}
+			}
+		}
+		p.mu.Unlock()
+		ui.post(refresh)
+	}()
+}
+
+// waitPart waits for part k of the streamed song i: "" when it is there,
+// else why it can't come ("-" when the preview moved on).
+func (p *preview) waitPart(i, k int) string {
+	for {
+		p.mu.Lock()
+		ss := p.streams[i]
+		have, why, cur := ss.have[k], ss.failed[k], p.cur
+		p.mu.Unlock()
+		previewMu.Lock()
+		still := previewCur == p
+		previewMu.Unlock()
+		switch {
+		case have:
+			return ""
+		case why != "":
+			return why
+		case !still || cur != i:
+			return "-"
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+// streamParts fetches the parts of the streamed song i while it is the
+// one asked for: the one playing (again, if it was deleted) and the next.
+func (p *preview) streamParts(ctx context.Context, i int, title string, prog func(got, total int64)) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(300 * time.Millisecond):
+		}
+		p.mu.Lock()
+		ss := p.streams[i]
+		k := -1
+		if p.cur == i {
+			for _, j := range []int{ss.part, ss.part + 1} {
+				if j < len(ss.s.parts) && !ss.have[j] && ss.failed[j] == "" {
+					k = j
+					break
+				}
+			}
+		}
+		p.mu.Unlock()
+		if k < 0 {
+			continue
+		}
+		var err error
+		for try := 0; try < 3; try++ {
+			if err = ss.s.fetchPart(ctx, k, ss.files[k], title, prog); err == nil || ctx.Err() != nil {
+				break
+			}
+			time.Sleep(2 * time.Second)
+		}
+		if ctx.Err() != nil {
+			return
+		}
+		p.mu.Lock()
+		if err != nil {
+			logMsg(fmt.Sprintf("Listen: %q, part %d: %v", title, k+1, err))
+			ss.failed[k] = iaErrText(err)
+		} else {
+			ss.have[k] = true
+		}
+		p.mu.Unlock()
+	}
 }
 
 // previewStop: the preview ends (the page left, Download, its last song's
@@ -411,6 +599,7 @@ func iaListenSongs(it *iaItem) []listenSong {
 func ytListenSongs(i *ytInfo) []listenSong {
 	one := func(link, title string, dur float64, infoJSON []byte) listenSong {
 		return listenSong{Title: title, Duration: dur, Ext: ".m4a",
+			stream: func(ctx context.Context) (*ytStream, error) { return ytOpenStream(ctx, link, infoJSON) },
 			fetch: func(ctx context.Context, dst string, progress func(int64, int64)) error {
 				work := filepath.Join(listenDir(), "work")
 				os.MkdirAll(work, 0o755)

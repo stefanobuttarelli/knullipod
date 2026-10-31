@@ -1,8 +1,8 @@
 {
-  "version": "1.0-beta.2",
-  "path": "release/betterpod-v1.0-beta.2-knulli.zip",
-  "url": "https://raw.githubusercontent.com/stefanobuttarelli/betterPod/main/release/betterpod-v1.0-beta.2-knulli.zip",
-  "sha256": "2ff4611db17f907beb139553b1d4c1f72f99103633ed0b4a9464574960ac63ca",
-  "size": 16279930,
-  "notes": "- Suno opens without the keyboard: choose Profile or Song code first."
+  "version": "1.0-beta.3",
+  "path": "release/betterpod-v1.0-beta.3-knulli.zip",
+  "url": "https://raw.githubusercontent.com/stefanobuttarelli/betterPod/main/release/betterpod-v1.0-beta.3-knulli.zip",
+  "sha256": "e216670109d19237008a295b68df93ca7a47a2fbaf339cd4df3cc4b03851c0da",
+  "size": 16293033,
+  "notes": "- YouTube Listen starts at once: long videos come in parts (Knulli).\n- Genius in the Music menu, under Cover Flow.\n- The header shows Internet Archive, Podcasts or Suno, with the item's name in the bar under it."
 }

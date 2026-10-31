@@ -119,7 +119,8 @@ func (c sunoClip) genre() string {
 
 // sunoPage: one page of a list of songs.
 type sunoPage struct {
-	Title string // the profile's or playlist's name ("" for one song)
+	Kind  string // "Song", "Playlist" (a profile: "")
+	Title string // the profile's or playlist's name, or the song's title
 	Clips []sunoClip
 	Total int  // songs in all (0: unknown)
 	More  bool // there may be another page
@@ -207,7 +208,7 @@ func sunoSong(id string) (sunoPage, error) {
 	if !ok {
 		return sunoPage{}, errors.New("This song isn't finished")
 	}
-	return sunoPage{Title: c.Title, Clips: []sunoClip{c}, Total: 1}, nil
+	return sunoPage{Kind: "Song", Title: c.Title, Clips: []sunoClip{c}, Total: 1}, nil
 }
 
 // sunoPlaylist: page (from 1) of a playlist.
@@ -222,7 +223,7 @@ func sunoPlaylist(id string, page int) (sunoPage, error) {
 	if err := sunoGet(fmt.Sprintf("/api/playlist/%s?page=%d", url.PathEscape(id), page), &out); err != nil {
 		return sunoPage{}, err
 	}
-	p := sunoPage{Title: out.Name, Total: out.Total, More: len(out.Clips) > 0}
+	p := sunoPage{Kind: "Playlist", Title: out.Name, Total: out.Total, More: len(out.Clips) > 0}
 	for _, c := range out.Clips {
 		if cl, ok := c.Clip.clip(); ok {
 			p.Clips = append(p.Clips, cl)
@@ -431,7 +432,7 @@ func (ui *IpodUI) sunoView() *View {
 		st.profile, st.err = h, ""
 		addRecentSearch("suno", "@"+h)
 		ui.refreshView(v)
-		ui.showView(ui.sunoListView("@"+h, "suno:@"+strings.ToLower(h), func(page int) (sunoPage, error) {
+		ui.showView(ui.sunoListView("Profile", "@"+h, "suno:@"+strings.ToLower(h), func(page int) (sunoPage, error) {
 			return sunoProfile(h, page)
 		}), "")
 	}
@@ -456,7 +457,7 @@ func (ui *IpodUI) sunoView() *View {
 		var once sync.Once
 		var tg sunoTarget
 		var terr error
-		ui.showView(ui.sunoListView(st.code, "suno:"+st.code, func(page int) (sunoPage, error) {
+		ui.showView(ui.sunoListView("Song code", st.code, "suno:"+st.code, func(page int) (sunoPage, error) {
 			once.Do(func() { tg, terr = target() })
 			if terr != nil {
 				return sunoPage{}, terr
@@ -479,8 +480,13 @@ func (ui *IpodUI) sunoView() *View {
 // sunoListView: songs (a profile's, a playlist's, or one), loaded a page
 // at a time: Listen (A plays a song on its row), Download All, and each
 // song (Y: download just that one).
-func (ui *IpodUI) sunoListView(title, key string, load func(page int) (sunoPage, error)) *View {
+// The header says Suno; what is shown (the profile, the song or playlist)
+// is in the section bar above the list, kind ("Profile") and name (title,
+// replaced by the name Suno gives once the first page comes).
+func (ui *IpodUI) sunoListView(kind, title, key string, load func(page int) (sunoPage, error)) *View {
 	st := &struct {
+		kind   string
+		name   string
 		clips  []sunoClip
 		total  int
 		page   int
@@ -490,14 +496,14 @@ func (ui *IpodUI) sunoListView(title, key string, load func(page int) (sunoPage,
 		thumbs map[string]*Album
 		live   atomic.Bool
 		rec    map[string]string
-	}{thumbs: map[string]*Album{}, more: true, rec: sunoRecord()}
+	}{kind: kind, name: title, thumbs: map[string]*Album{}, more: true, rec: sunoRecord()}
 	st.live.Store(true)
-	v := &View{ID: "sunoList", Title: title, Kind: KindFull}
+	v := &View{ID: "sunoList", Title: "Suno", Kind: KindFull}
 	v.onClose = func() { st.live.Store(false); ui.previewStop() }
 	var next func()
 	refresh := func() { ui.refreshView(v) }
 	v.Build = func() []Item {
-		var items []Item
+		items := []Item{{Label: st.kind + ": " + st.name, Header: true}}
 		n := len(st.clips)
 		songs := make([]listenSong, n)
 		for i, c := range st.clips {
@@ -524,7 +530,7 @@ func (ui *IpodUI) sunoListView(title, key string, load func(page int) (sunoPage,
 			}
 			row := Item{Label: label, Sublabel: sub, OnSelect: func() {
 				ui.previewStop()
-				ui.startSunoDownload(left, v.Title, func() { st.rec = sunoRecord() })
+				ui.startSunoDownload(left, st.name, func() { st.rec = sunoRecord() })
 			}}
 			if len(left) == 0 {
 				row = Item{Label: "Downloaded", Sublabel: "In your library", NoArrow: true}
@@ -611,9 +617,9 @@ func (ui *IpodUI) sunoListView(title, key string, load func(page int) (sunoPage,
 				st.page, st.total = page, p.Total
 				st.more = p.More && len(added) > 0 && (p.Total == 0 || len(st.clips) < p.Total)
 				if p.Title != "" && page == 1 {
-					v.Title = p.Title
-					if ui.topScreen() == v {
-						ui.headerTitle = p.Title
+					st.name = p.Title // (in the section bar, not the header)
+					if p.Kind != "" {
+						st.kind = p.Kind
 					}
 				}
 				var jobs []thumbJob
@@ -630,8 +636,8 @@ func (ui *IpodUI) sunoListView(title, key string, load func(page int) (sunoPage,
 				ui.loadThumbs(v, "Suno", jobs, st.live.Load)
 				idx := v.Index
 				ui.refreshView(v)
-				if first && len(v.Items) > 0 {
-					v.Index = 0
+				if first && len(v.Items) > 1 {
+					v.Index = 1 // (under the section bar)
 				} else {
 					v.Index = idx
 				}
@@ -639,6 +645,7 @@ func (ui *IpodUI) sunoListView(title, key string, load func(page int) (sunoPage,
 		}()
 	}
 	v.Items = v.Build()
+	v.Index = 1 // (under the section bar)
 	next()
 	return v
 }

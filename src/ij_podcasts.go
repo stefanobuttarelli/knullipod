@@ -680,7 +680,9 @@ func (ui *IpodUI) podcastView(p podcast) *View {
 		status string
 		busy   bool
 	}{busy: true}
-	v := &View{ID: "podcast", Title: p.Name, Kind: KindFull}
+	// the header says Podcasts; the podcast's name is in the section bar
+	// above the episodes
+	v := &View{ID: "podcast", Title: "Podcasts", Kind: KindFull, Index: 1}
 	download := func(eps []podEpisode) { ui.startPodDownload(p, eps) }
 	v.Build = func() []Item {
 		// what is downloaded: in the record and still there (one look at
@@ -696,14 +698,15 @@ func (ui *IpodUI) podcastView(p podcast) *View {
 			}
 			return ""
 		}
+		bar := Item{Label: p.Name, Header: true}
 		if st.busy {
-			return []Item{{Label: "Loading episodes…", NoArrow: true}}
+			return []Item{bar, {Label: "Loading episodes…", NoArrow: true}}
 		}
 		if st.status != "" {
 			l, s, _ := strings.Cut(st.status, " · ")
-			return []Item{{Label: l, Sublabel: s, NoArrow: true}}
+			return []Item{bar, {Label: l, Sublabel: s, NoArrow: true}}
 		}
-		var items []Item
+		items := []Item{bar}
 		var latest []podEpisode
 		for _, e := range st.eps {
 			if len(latest) < 3 && e.playable() && have(e) == "" {
@@ -747,7 +750,7 @@ func (ui *IpodUI) podcastView(p podcast) *View {
 			it.Sublabel = strings.Join(parts, " · ")
 			items = append(items, it)
 		}
-		if len(items) == 0 {
+		if len(items) == 1 {
 			items = append(items, Item{Label: "No episodes with audio", NoArrow: true})
 		}
 		return items

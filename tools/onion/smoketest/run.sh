@@ -49,7 +49,7 @@ key Up;                shot np-volume 3    # Cover Flow's Now Playing: up raises
 key Escape;            shot menu-back 5    # MENU = back
 key Escape Escape;     shot home-again 5   # back to the main menu
 key Down space;        shot music-menu 5   # Music: Now playing and Up Next at the bottom
-key Down Down Down Down Down Down Down Down space; shot upnext 5 # Up Next (9th row)
+key Down Down Down Down Down Down Down Down Down space; shot upnext 5 # Up Next (10th row)
 key Escape;            shot music-again 4
 ev 115 1; ev 115 0;    shot vol-up 1       # volume key
 key Tab;               shot bright-down 1  # L2: brightness
@@ -63,7 +63,7 @@ key Control_R;         shot hold-off 3
 key Down Down Down Down Alt_L; shot clear-sheet 3 # Y on the main menu's "Now Playing": Clear Now Playing
 key Right space;       shot cleared 4      # Clear (Keep is chosen first): the music stops, the two rows go
 key Up Up Up Up space; shot music-again2 4 # Music (Genius took Now Playing's row)
-key Down Down Down space; shot albums 5    # Albums
+key Down Down Down Down space; shot albums 5 # Albums (Genius above Playlists)
 key Alt_L;             shot album-sheet 3  # Y on an album: its options
 key Down Down Down space; sleep 2          # Share (after Add to Playlist…)
 key space Return;      shot share 10       # it asks this betterPod's name first: "g", START; then a code from magic-wormhole's server, waiting

@@ -561,14 +561,17 @@ func (ui *IpodUI) iaItemView(r iaResult, th *Album) *View {
 		item *iaItem
 		err  string
 	}{}
-	v := &View{ID: "iaItem", Title: r.Title, Kind: KindFull}
+	// the header says Internet Archive; the item's title is in the section
+	// bar above its rows (a result's name never goes in the header)
+	name := r.Title
+	v := &View{ID: "iaItem", Title: "Internet Archive", Kind: KindFull, Index: 1}
 	v.onClose = ui.previewStop // (a song playing here stops with the page)
 	v.Build = func() []Item {
 		lic := licenseLabel(r.License)
 		if st.item != nil && st.item.License != "" {
 			lic = licenseLabel(st.item.License)
 		}
-		items := []Item{{Label: "License", Value: lic, NoArrow: true}}
+		items := []Item{{Label: name, Header: true}, {Label: "License", Value: lic, NoArrow: true}}
 		if st.item == nil {
 			if st.err != "" {
 				items = append(items, Item{Label: st.err, NoArrow: true})
@@ -656,15 +659,11 @@ func (ui *IpodUI) iaItemView(r iaResult, th *Album) *View {
 			if err != nil {
 				st.err = iaErrText(err)
 			} else if it.Title != "" {
-				// opened by identifier: the real title for the header
-				v.Title = it.Title
-				if ui.topScreen() == v {
-					ui.headerTitle = it.Title
-				}
+				name = it.Title // (opened by identifier: its real title)
 			}
 			ui.refreshView(v)
-			if err == nil && len(v.Items) > 1 && v.Index == 0 {
-				v.Index = 1 // on the first download button
+			if err == nil && len(v.Items) > 2 && v.Index <= 1 {
+				v.Index = 2 // on Listen, or the first download button
 			}
 		})
 	}()
