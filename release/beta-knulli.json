@@ -1,8 +1,8 @@
 {
-  "version": "1.0-beta.1",
-  "path": "release/betterpod-v1.0-beta.1-knulli.zip",
-  "url": "https://raw.githubusercontent.com/stefanobuttarelli/betterPod/main/release/betterpod-v1.0-beta.1-knulli.zip",
-  "sha256": "c9c6ab70fafde904633defdb9b77a940a1671546409e3728c70ade657ecb87f2",
-  "size": 16281490,
-  "notes": "- The first beta of 1.0: the beta channel works. Same as 0.92 otherwise."
+  "version": "1.0-beta.2",
+  "path": "release/betterpod-v1.0-beta.2-knulli.zip",
+  "url": "https://raw.githubusercontent.com/stefanobuttarelli/betterPod/main/release/betterpod-v1.0-beta.2-knulli.zip",
+  "sha256": "2ff4611db17f907beb139553b1d4c1f72f99103633ed0b4a9464574960ac63ca",
+  "size": 16279930,
+  "notes": "- Suno opens without the keyboard: choose Profile or Song code first."
 }

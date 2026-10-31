@@ -470,10 +470,9 @@ func (ui *IpodUI) sunoView() *View {
 			return sunoSong(tg.ID)
 		}), "")
 	}
+	// no keyboard at first: Profile or Song Code is chosen first, and A on
+	// it opens the keyboard
 	v.Items = v.Build()
-	if len(recentSearches("suno")) == 0 {
-		ui.showKeyboard(&st.profile, func() { ui.refreshView(v) }, openProfile)
-	}
 	return v
 }
 
